@@ -8,8 +8,42 @@ import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Amplify } from 'aws-amplify';
-import { signIn, signOut, getCurrentUser } from 'aws-amplify/auth';
-import outputs from '../amplify_outputs.json';
+import { signIn } from 'aws-amplify/auth';
+// Note: This file is generated once you run 'npx amplify sandbox'
+import outputs from '../amplify_outputs.json'; 
+
+
+import { getCurrentUser } from 'aws-amplify/auth';
+
+
+
+
+const checkUser = async () => {
+  try {
+    await getCurrentUser();
+    setLoggedIn(true); // If this succeeds, you're already in!
+  } catch (err) {
+    setLoggedIn(false); // No user found, show login screen
+  }
+};
+
+//signing you out apon running the code 
+//this will probably have to be changed later if planning to sign in with different user account
+import { signOut } from 'aws-amplify/auth';
+
+// Run this once to clear the "stuck" session
+const handleSignOut = async () => {
+  try {
+    await signOut();
+    setLoggedIn(false);
+    console.log("Signed out successfully");
+  } catch (error) {
+    console.log("Error signing out: ", error);
+  }
+};
+
+
+
 
 Amplify.configure(outputs);
 
@@ -120,6 +154,10 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
   );
 }
 
+/**
+ * Main App Component: Handles Login logic and routing.
+ */
+
 export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -128,18 +166,19 @@ export default function App(): JSX.Element {
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        await getCurrentUser();
-        setLoggedIn(true);
-      } catch (err) {
-        setLoggedIn(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     checkUser();
   }, []);
+
+  const checkUser = async () => {
+    try {
+      await getCurrentUser();
+      setLoggedIn(true);
+    } catch (err) {
+      setLoggedIn(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -150,6 +189,21 @@ export default function App(): JSX.Element {
     }
   };
 
+  // Handle Password Confirmation for Admin-created users
+  const handleConfirmPassword = async (newPassword: string) => {
+    try {
+      const { isSignedIn } = await confirmSignIn({
+        challengeResponse: newPassword
+      });
+      if (isSignedIn) {
+        setLoggedIn(true);
+        Alert.alert("Success", "Password updated. Welcome to the system.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Input Required", "Please enter both Responder ID and Passcode.");
@@ -157,14 +211,16 @@ export default function App(): JSX.Element {
     }
     setIsLoading(true);
     try {
-      const { isSignedIn } = await signIn({
-        username: email.trim(),
-        password: password
+      const { isSignedIn } = await signIn({ 
+        username: email.trim(), 
+        password: password 
       });
-      if (isSignedIn) setLoggedIn(true);
+
+      if (isSignedIn) {
+        setLoggedIn(true);
+      }
     } catch (error: any) {
-      console.error(error);
-      Alert.alert("Authentication Failed", "Invalid credentials.");
+      Alert.alert("Login Failed", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +249,6 @@ export default function App(): JSX.Element {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="light" />
-
       <View style={styles.header}>
         <Text style={[styles.title, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
           911 Notepad
