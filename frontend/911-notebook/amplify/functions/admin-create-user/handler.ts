@@ -3,37 +3,33 @@ import { CognitoIdentityProviderClient, AdminCreateUserCommand } from "@aws-sdk/
 const client = new CognitoIdentityProviderClient({});
 
 export const handler = async (event: any) => {
-  // We expect the email to come from your app's frontend request
-  const { email } = JSON.parse(event.body || '{}');
-
-  if (!email) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Email is required" }) };
-  }
+  const { email } = JSON.parse(event.body);
+  
+  // Use the environment variable we just injected
+  const userPoolId = process.env.USER_POOL_ID; 
 
   const command = new AdminCreateUserCommand({
-    UserPoolId: process.env.AMPLIFY_AUTH_USERPOOL_ID, // Automatically injected by Amplify
+    UserPoolId: userPoolId,
     Username: email,
     UserAttributes: [
       { Name: "email", Value: email },
       { Name: "email_verified", Value: "true" },
     ],
-    DesiredDeliveryMediums: ["EMAIL"],
+    TemporaryPassword: "TempPassword123!", // You can randomize this later
   });
 
   try {
     await client.send(command);
     return {
       statusCode: 200,
-      headers: {
-        "Access-Control-Allow-Origin": "*", // Allows your Expo app to call this
-        "Access-Control-Allow-Headers": "*"
-      },
+      headers: { "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ message: "User created successfully" }),
     };
   } catch (err: any) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: err.message }),
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body: JSON.stringify({ message: err.message }),
     };
   }
 };

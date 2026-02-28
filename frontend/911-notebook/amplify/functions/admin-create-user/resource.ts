@@ -2,6 +2,8 @@ import { defineFunction } from '@aws-amplify/backend';
 
 export const adminCreateUser = defineFunction({
   name: 'admin-create-user',
-  // This points to the logic file we will create in Step 3
-  entry: './handler.ts' 
+  // This allows the function to access the User Pool ID automatically
+  environment: {
+    USER_POOL_ID: '', // This placeholder is updated by backend.ts
+  },   entry: './handler.ts' 
 });
