@@ -6,9 +6,8 @@ import {
   ActivityIndicator,
   View
 } from 'react-native'
-import { Audio } from 'expo-av'
+import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio'
 import * as FileSystem from 'expo-file-system/legacy'
-
 
 const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL
 
@@ -18,21 +17,18 @@ interface MicButtonProps {
 }
 
 export default function MicButton({ reportType, onFieldsExtracted }: MicButtonProps) {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const [status, setStatus] = useState<'idle' | 'recording' | 'transcribing' | 'parsing'>('idle')
 
   const startRecording = async () => {
     try {
-      await Audio.requestPermissionsAsync()
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true
-      })
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      )
-      setRecording(recording)
+      const permission = await AudioModule.requestRecordingPermissionsAsync()
+      if (!permission.granted) {
+        console.error('Microphone permission not granted')
+        return
+      }
+      await audioRecorder.prepareToRecordAsync()
+      audioRecorder.record()
       setStatus('recording')
     } catch (err) {
       console.error('Failed to start recording:', err)
@@ -40,12 +36,9 @@ export default function MicButton({ reportType, onFieldsExtracted }: MicButtonPr
   }
 
   const stopRecording = async () => {
-    if (!recording) return
-
     try {
-      await recording.stopAndUnloadAsync()
-      const uri = recording.getURI()
-      setRecording(null)
+      await audioRecorder.stop()
+      const uri = audioRecorder.uri
       setStatus('transcribing')
 
       if (!uri) throw new Error('No audio URI')
@@ -83,7 +76,7 @@ export default function MicButton({ reportType, onFieldsExtracted }: MicButtonPr
 
   const getStatusText = () => {
     switch (status) {
-      case 'idle': return '🎤 Hold to Record'
+      case 'idle': return '🎤 Tap to Record'
       case 'recording': return '⏹ Stop Recording'
       case 'transcribing': return 'Transcribing...'
       case 'parsing': return 'AI Parsing Report...'
