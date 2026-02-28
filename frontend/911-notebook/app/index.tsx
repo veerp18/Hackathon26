@@ -14,6 +14,39 @@ import { signIn } from 'aws-amplify/auth';
 // Note: This file is generated once you run 'npx amplify sandbox'
 import outputs from '../amplify_outputs.json'; 
 
+
+import { getCurrentUser } from 'aws-amplify/auth';
+
+
+
+
+const checkUser = async () => {
+  try {
+    await getCurrentUser();
+    setLoggedIn(true); // If this succeeds, you're already in!
+  } catch (err) {
+    setLoggedIn(false); // No user found, show login screen
+  }
+};
+
+//signing you out apon running the code 
+//this will probably have to be changed later if planning to sign in with different user account
+import { signOut } from 'aws-amplify/auth';
+
+// Run this once to clear the "stuck" session
+const handleSignOut = async () => {
+  try {
+    await signOut();
+    setLoggedIn(false);
+    console.log("Signed out successfully");
+  } catch (error) {
+    console.log("Error signing out: ", error);
+  }
+};
+
+
+
+
 Amplify.configure(outputs);
 
 /**
@@ -121,12 +154,39 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
 /**
  * Main App Component: Handles Login logic and routing.
  */
+
 export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true to check user
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        await getCurrentUser();
+        setLoggedIn(true);
+      } catch (err) {
+        setLoggedIn(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkUser();
+  }, []);
+
+  // Handle Sign Out
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setLoggedIn(false);
+      console.log("Signed out successfully");
+    } catch (error) {
+      console.log("Error signing out: ", error);
+    }
+  };
 
   // Handle Cognito Sign-In
   const handleLogin = async () => {
@@ -137,27 +197,37 @@ export default function App(): JSX.Element {
 
     setIsLoading(true);
     try {
-      const { isSignedIn, nextStep } = await signIn({ 
-        username: email, 
+      const { isSignedIn } = await signIn({ 
+        username: email.trim(), 
         password: password 
       });
 
       if (isSignedIn) {
         setLoggedIn(true);
-      } else if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        Alert.alert("New Password Required", "An admin created this account. Please use the web portal to set a permanent password.");
       }
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Authentication Failed", "Invalid credentials. Please check your ID and passcode.");
+      Alert.alert("Authentication Failed", "Invalid credentials.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (loggedIn) {
-    return <HomeScreen onLogout={() => setLoggedIn(false)} />;
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#c0392b" />
+      </View>
+    );
   }
+
+  if (loggedIn) {
+    return <HomeScreen onLogout={handleLogout} />;
+  }
+
+  // ... rest of your return (the KeyboardAvoidingView part) ...
+
+
 
   return (
     <KeyboardAvoidingView

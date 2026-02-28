@@ -17,3 +17,11 @@ backend.adminCreateUser.resources.lambda.addToRolePolicy(
     resources: [backend.auth.resources.userPool.userPoolArn],
   })
 );
+
+// Create a simple REST API and point it to your Lambda
+// adding users to the user pool
+const api = backend.addRestApi('adminApi');
+api.addHttpRoute('/create-user', backend.adminCreateUser, {
+  method: 'POST',
+  authorizationMode: 'userPool' // Only logged-in users can call this!
+});
