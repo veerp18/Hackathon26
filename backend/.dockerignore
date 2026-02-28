@@ -1,8 +1,14 @@
-node_modules
-dist
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
 .env
-.env.example
+.venv
 *.log
 .git
 .gitignore
 README.md
+alembic/versions/*.pyc
