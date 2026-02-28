@@ -1,30 +1,110 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useRef } from 'react';
+import {
+  StyleSheet, Text, View, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, Animated,
+} from 'react-native';
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
+import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+
+function PulseDot() {
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 1000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return <Animated.View style={[styles.pulseDot, { opacity }]} />;
+}
 
 function HomeScreen(): JSX.Element {
   const router = useRouter();
+  const [fontsLoaded] = useFonts({ Oswald_700Bold });
+
   return (
     <View style={styles.homeContainer}>
       <StatusBar style="light" />
-      <Text style={styles.homeGreeting}>Welcome, Responder</Text>
 
-      <View style={styles.cardGrid}>
-        <View style={styles.cardRow}>
-          <TouchableOpacity style={styles.card} onPress={() => router.push('/report')}>
-            <Text style={styles.cardTitle}>Report</Text>
-          </TouchableOpacity>
+      {/* Badge */}
+      <View style={styles.badge}>
+        <PulseDot />
+        <Text style={styles.badgeText}>ACTIVE SYSTEM</Text>
+      </View>
 
-          <TouchableOpacity style={styles.card}>
-            <Text style={styles.cardTitle}>Past Reports</Text>
-          </TouchableOpacity>
+      {/* Logo */}
+      <Text style={[styles.logo, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
+        {'911\n'}<Text style={styles.logoAccent}>Notepad</Text>
+      </Text>
+      <Text style={styles.tagline}>
+        {'Field reporting for first responders.\nFast. Accurate. Secure.'}
+      </Text>
+
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Stats */}
+      <View style={styles.stats}>
+        <View style={styles.stat}>
+          <Text style={styles.statVal}>24</Text>
+          <Text style={styles.statLabel}>Reports logged</Text>
         </View>
+        <View style={[styles.stat, styles.statBorder]}>
+          <Text style={styles.statVal}>3</Text>
+          <Text style={styles.statLabel}>This shift</Text>
+        </View>
+        <View style={[styles.stat, styles.statBorder]}>
+          <Text style={styles.statVal}>4h 12m</Text>
+          <Text style={styles.statLabel}>On duty</Text>
+        </View>
+      </View>
 
-        <TouchableOpacity style={[styles.card, styles.cardWide]}>
-          <Text style={styles.cardTitle}>Account</Text>
+      {/* Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={() => router.push('/report')}>
+          <View style={[styles.btnIcon, styles.btnIconPrimary]}>
+            <Feather name="mic" size={18} color="#fff" />
+          </View>
+          <View style={styles.btnText}>
+            <Text style={styles.btnTitle}>New Report</Text>
+            <Text style={[styles.btnSub, styles.btnSubPrimary]}>Speak-to-text incident capture</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.btn}>
+          <View style={styles.btnIcon}>
+            <Feather name="file-text" size={18} color="#fff" />
+          </View>
+          <View style={styles.btnText}>
+            <Text style={styles.btnTitle}>Past Reports</Text>
+            <Text style={styles.btnSub}>View and export PDF records</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.btn}>
+          <View style={styles.btnIcon}>
+            <Feather name="user" size={18} color="#fff" />
+          </View>
+          <View style={styles.btnText}>
+            <Text style={styles.btnTitle}>Account</Text>
+            <Text style={styles.btnSub}>Profile, credentials & settings</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>UNIT #4827 · BADGE 0392</Text>
+        <View style={styles.footerDot} />
+        <Text style={styles.footerText}>DISPATCH ACTIVE</Text>
       </View>
     </View>
   );
@@ -34,7 +114,6 @@ export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
   if (loggedIn) {
@@ -82,9 +161,10 @@ export default function App(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  // --- Login screen ---
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0e0f11',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -95,12 +175,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 42,
-    color: '#fff',
+    color: '#e8e9ec',
     letterSpacing: 2,
   },
   subtitle: {
     fontSize: 14,
-    color: '#aaa',
+    color: '#5a5f6e',
     marginTop: 6,
   },
   form: {
@@ -108,17 +188,17 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   input: {
-    backgroundColor: '#2a2a3e',
-    color: '#fff',
+    backgroundColor: '#14161a',
+    color: '#e8e9ec',
     borderRadius: 8,
     padding: 14,
     fontSize: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#3a3a5e',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   button: {
-    backgroundColor: '#e63946',
+    backgroundColor: '#c0392b',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -130,57 +210,147 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Home screen
+  // --- Home screen ---
   homeContainer: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
-    paddingTop: 80,
+    backgroundColor: '#0e0f11',
     paddingHorizontal: 24,
-    alignItems: 'center',
+    paddingTop: 60,
+    paddingBottom: 32,
   },
-  homeGreeting: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 1,
-    marginBottom: 40,
-    textAlign: 'center',
-  },
-  cardGrid: {
-    width: '100%',
-    alignItems: 'center',
-    gap: 16,
-  },
-  cardRow: {
+  badge: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(192,57,43,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(192,57,43,0.2)',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 18,
+  },
+  pulseDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#e74c3c',
+  },
+  badgeText: {
+    fontSize: 10,
+    color: '#e74c3c',
+    letterSpacing: 1.5,
+    fontWeight: '500',
+  },
+  logo: {
+    fontSize: 58,
+    lineHeight: 52,
+    color: '#e8e9ec',
+    letterSpacing: 1,
+  },
+  logoAccent: {
+    color: '#e74c3c',
+  },
+  tagline: {
+    marginTop: 14,
+    fontSize: 13,
+    color: '#5a5f6e',
+    lineHeight: 20,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginVertical: 28,
+  },
+  stats: {
+    flexDirection: 'row',
+    marginBottom: 32,
+  },
+  stat: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  statBorder: {
+    paddingLeft: 20,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.06)',
+  },
+  statVal: {
+    fontSize: 22,
+    fontWeight: '500',
+    color: '#e8e9ec',
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#5a5f6e',
+    marginTop: 2,
+    letterSpacing: 0.4,
+  },
+  actions: {
+    flex: 1,
     gap: 12,
   },
-  card: {
-    width: 190,
-    height: 190,
-    backgroundColor: '#12122a',
-    borderRadius: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#e63946',
-    borderTopWidth: 1,
-    borderTopColor: '#3a3a5e',
-    borderRightWidth: 1,
-    borderRightColor: '#3a3a5e',
-    borderBottomWidth: 1,
-    borderBottomColor: '#3a3a5e',
-    justifyContent: 'flex-end',
-    padding: 16,
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: 20,
+    backgroundColor: '#14161a',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
   },
-  cardWide: {
-    aspectRatio: undefined,
-    paddingVertical: 28,
-    width: '100%',
-    flex: 0,
+  btnPrimary: {
+    backgroundColor: '#c0392b',
+    borderColor: '#c0392b',
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 0.5,
+  btnIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnIconPrimary: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  btnText: {
+    flex: 1,
+  },
+  btnTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#e8e9ec',
+    letterSpacing: 0.1,
+  },
+  btnSub: {
+    fontSize: 11.5,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 2,
+  },
+  btnSubPrimary: {
+    color: 'rgba(255,255,255,0.6)',
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  footerText: {
+    fontSize: 10,
+    color: '#5a5f6e',
+    letterSpacing: 0.8,
+    fontWeight: '500',
+  },
+  footerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#c0392b',
+    opacity: 0.5,
   },
 });
