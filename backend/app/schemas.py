@@ -104,6 +104,19 @@ class Report(ReportBase):
         from_attributes = True
 
 
+# Report History Schema
+class ReportHistory(BaseModel):
+    id: UUID
+    report_id: UUID
+    modified_by: UUID
+    data: Dict[str, Any]
+    version: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
 # Cognito User (from JWT token)
 class CognitoUser(BaseModel):
     sub: str

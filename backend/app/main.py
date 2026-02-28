@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 from app.config import get_settings
-from app.routes import organizations, users
+from app.routes import organizations, users, reports
 
 settings = get_settings()
 
@@ -33,6 +33,7 @@ async def health_check():
 # Include routers
 app.include_router(organizations.router)
 app.include_router(users.router)
+app.include_router(reports.router)
 
 if __name__ == "__main__":
     import uvicorn
