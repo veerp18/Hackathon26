@@ -209,17 +209,47 @@ MEDICAL_SCHEMA = {
     "narrative": ""
 }
 
+
+def detect_report_type(transcript: str) -> str:
+    prompt = f"""Based on this 911 responder voice transcript, determine if this is a police incident report or a medical/EMS report.
+Return ONLY one word: either "police" or "medical"
+
+Transcript:
+{transcript}"""
+
+    response = bedrock.invoke_model(
+        modelId="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        body=json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 10,
+            "messages": [{"role": "user", "content": prompt}]
+        })
+    )
+    result = json.loads(response["body"].read())
+    report_type = result["content"][0]["text"].strip().lower()
+    return "medical" if "medical" in report_type else "police"
+
+
 def lambda_handler(event, context):
 
-    # 1. Get transcript and report type from request
-    body = json.loads(event["body"])
-    transcript = body["transcript"]
-    report_type = body["report_type"]  # "police" or "medical"
+    # 1. Parse body
+    if isinstance(event.get("body"), str):
+        body = json.loads(event["body"])
+    elif isinstance(event.get("body"), dict):
+        body = event["body"]
+    else:
+        body = event
 
-    # 2. Pick the right schema
+    transcript = body["transcript"]
+
+    # 2. Auto detect report type if not provided
+    report_type = body.get("report_type") or detect_report_type(transcript)
+    print(f"Report type detected: {report_type}")
+
+    # 3. Pick the right schema
     schema = POLICE_SCHEMA if report_type == "police" else MEDICAL_SCHEMA
 
-    # 3. Build prompt
+    # 4. Build prompt
     prompt = f"""You are a {report_type} report assistant for 911 responders.
 Extract information from this voice transcript and map it to the JSON schema.
 Only fill in fields that are clearly mentioned. Leave others as empty string.
@@ -231,9 +261,9 @@ Schema:
 Transcript:
 {transcript}"""
 
-    # 4. Call Bedrock
+    # 5. Call Bedrock
     response = bedrock.invoke_model(
-        modelId="anthropic.claude-3-5-sonnet-20241022-v2:0",
+        modelId="us.anthropic.claude-3-5-sonnet-20241022-v2:0",
         body=json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 4096,
@@ -241,11 +271,11 @@ Transcript:
         })
     )
 
-    # 5. Parse response
+    # 6. Parse response
     result = json.loads(response["body"].read())
     extracted = result["content"][0]["text"]
 
-    # 6. Strip markdown if model wraps in ```json
+    # 7. Strip markdown if model wraps in ```json
     extracted = extracted.strip()
     if extracted.startswith("```"):
         extracted = extracted.split("```")[1]
@@ -259,5 +289,8 @@ Transcript:
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json"
         },
-        "body": json.dumps({"fields": json.loads(extracted)})
+        "body": json.dumps({
+            "fields": json.loads(extracted),
+            "report_type": report_type
+        })
     }
