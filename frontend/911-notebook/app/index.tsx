@@ -7,51 +7,12 @@ import {
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-
-// AWS Amplify Imports
 import { Amplify } from 'aws-amplify';
-import { signIn } from 'aws-amplify/auth';
-// Note: This file is generated once you run 'npx amplify sandbox'
-import outputs from '../amplify_outputs.json'; 
-
-
-import { getCurrentUser } from 'aws-amplify/auth';
-
-
-
-
-const checkUser = async () => {
-  try {
-    await getCurrentUser();
-    setLoggedIn(true); // If this succeeds, you're already in!
-  } catch (err) {
-    setLoggedIn(false); // No user found, show login screen
-  }
-};
-
-//signing you out apon running the code 
-//this will probably have to be changed later if planning to sign in with different user account
-import { signOut } from 'aws-amplify/auth';
-
-// Run this once to clear the "stuck" session
-const handleSignOut = async () => {
-  try {
-    await signOut();
-    setLoggedIn(false);
-    console.log("Signed out successfully");
-  } catch (error) {
-    console.log("Error signing out: ", error);
-  }
-};
-
-
-
+import { signIn, signOut, getCurrentUser } from 'aws-amplify/auth';
+import outputs from '../amplify_outputs.json';
 
 Amplify.configure(outputs);
 
-/**
- * PulseDot Component: Used for the "Active System" badge animation.
- */
 function PulseDot() {
   const opacity = useRef(new Animated.Value(1)).current;
 
@@ -67,9 +28,6 @@ function PulseDot() {
   return <Animated.View style={[styles.pulseDot, { opacity }]} />;
 }
 
-/**
- * HomeScreen Component: The "Logged In" view.
- */
 function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
   const router = useRouter();
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
@@ -86,7 +44,7 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
       <Text style={[styles.logo, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
         {'911\n'}<Text style={styles.logoAccent}>Notepad</Text>
       </Text>
-      
+
       <Text style={styles.tagline}>
         {'Field reporting for first responders.\nFast. Accurate. Secure.'}
       </Text>
@@ -140,7 +98,7 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
             <Text style={styles.btnSub}>Manage agency personnel</Text>
           </View>
           <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
-      </TouchableOpacity>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.btn} onPress={onLogout}>
           <View style={styles.btnIcon}>
@@ -162,18 +120,13 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
   );
 }
 
-/**
- * Main App Component: Handles Login logic and routing.
- */
-
 export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true to check user
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
-  // Check for existing session on mount
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -188,40 +141,38 @@ export default function App(): JSX.Element {
     checkUser();
   }, []);
 
-  // Handle Sign Out
   const handleLogout = async () => {
     try {
       await signOut();
       setLoggedIn(false);
-      console.log("Signed out successfully");
     } catch (error) {
       console.log("Error signing out: ", error);
     }
   };
 
-  // Handle Cognito Sign-In
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Input Required", "Please enter both Responder ID and Passcode.");
       return;
     }
-
     setIsLoading(true);
     try {
-      const { isSignedIn } = await signIn({ 
-        username: email.trim(), 
-        password: password 
+      const { isSignedIn } = await signIn({
+        username: email.trim(),
+        password: password
       });
-
-      if (isSignedIn) {
-        setLoggedIn(true);
-      }
+      if (isSignedIn) setLoggedIn(true);
     } catch (error: any) {
       console.error(error);
       Alert.alert("Authentication Failed", "Invalid credentials.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ← DEV BYPASS
+  const handleDevBypass = () => {
+    setLoggedIn(true);
   };
 
   if (isLoading) {
@@ -235,10 +186,6 @@ export default function App(): JSX.Element {
   if (loggedIn) {
     return <HomeScreen onLogout={handleLogout} />;
   }
-
-  // ... rest of your return (the KeyboardAvoidingView part) ...
-
-
 
   return (
     <KeyboardAvoidingView
@@ -274,8 +221,8 @@ export default function App(): JSX.Element {
           secureTextEntry
           editable={!isLoading}
         />
-        <TouchableOpacity 
-          style={[styles.button, isLoading && { opacity: 0.7 }]} 
+        <TouchableOpacity
+          style={[styles.button, isLoading && { opacity: 0.7 }]}
           onPress={handleLogin}
           disabled={isLoading}
         >
@@ -284,6 +231,14 @@ export default function App(): JSX.Element {
           ) : (
             <Text style={styles.buttonText}>Log In</Text>
           )}
+        </TouchableOpacity>
+
+        {/* DEV BYPASS — remove before production */}
+        <TouchableOpacity
+          style={styles.devBypass}
+          onPress={handleDevBypass}
+        >
+          <Text style={styles.devBypassText}>Skip Login (Dev Only)</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -337,6 +292,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  devBypass: {
+    marginTop: 20,
+    alignItems: 'center',
+    padding: 10,
+  },
+  devBypassText: {
+    color: '#5a5f6e',
+    fontSize: 13,
   },
   homeContainer: {
     flex: 1,

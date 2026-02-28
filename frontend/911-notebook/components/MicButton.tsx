@@ -27,6 +27,12 @@ export default function MicButton({ reportType, onFieldsExtracted }: MicButtonPr
         console.error('Microphone permission not granted')
         return
       }
+
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      })
+
       await audioRecorder.prepareToRecordAsync()
       audioRecorder.record()
       setStatus('recording')

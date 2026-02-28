@@ -33,9 +33,7 @@ export default function AdminScreen() {
       const token = session.tokens?.idToken?.toString();
 
       // 2. Get the API URL from the custom outputs we defined in backend.ts
-      const apiUrl = outputs.custom.adminApiUrl;
-
-      const cleanUrl = apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`;
+      const apiUrl = outputs.custom.adminApiUrl; 
 
       // 3. Make a direct POST request
       const response = await fetch(`${apiUrl}create-user`, {
@@ -44,7 +42,7 @@ export default function AdminScreen() {
           'Content-Type': 'application/json',
           'Authorization': token || '',
         },
-        body: JSON.stringify({ email: newEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email: newEmail.trim() }),
       });
 
       if (response.ok) {
