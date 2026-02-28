@@ -7,7 +7,7 @@ import {
   View
 } from 'react-native'
 import { Audio } from 'expo-av'
-import { File } from 'expo-file-system/next'
+import * as FileSystem from 'expo-file-system/legacy'
 
 
 const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL
@@ -51,8 +51,9 @@ export default function MicButton({ reportType, onFieldsExtracted }: MicButtonPr
       if (!uri) throw new Error('No audio URI')
 
       // 1. Convert audio to base64
-      const file = new File(uri)
-      const base64Audio = await file.text()
+      const base64Audio = await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64'
+      })
 
       // 2. Send to Lambda 1 — transcribe
       const transcribeRes = await fetch(`${API}/transcribe`, {
