@@ -9,6 +9,7 @@ export default function ReportScreen() {
   const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL
   const handleFieldsExtracted = async (fields: Record<string, any>, type: string) => {
     setFormData(fields)
+    console.log('Form data:', JSON.stringify(formData, null, 2))
     setReportType(type)
 
     // Auto validate
@@ -18,9 +19,13 @@ export default function ReportScreen() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ report: fields, report_type: type })
       })
-      const validateData = await validateRes.json()
+      const validateRaw = await validateRes.text()
+      console.log('Raw validation response:', validateRaw)
+      const validateData = JSON.parse(validateRaw)
       const validateBody = JSON.parse(validateData.body)
-      console.log('Validation:', JSON.stringify(validateBody, null, 2))
+      console.log('Missing fields:', JSON.stringify(validateBody.missing_fields, null, 2))
+      console.log('Issues:', JSON.stringify(validateBody.issues, null, 2))
+      console.log('Is complete:', validateBody.is_complete)
       setValidation(validateBody)
     } catch (err) {
       console.error('Validation error:', err)
