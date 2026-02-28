@@ -104,6 +104,29 @@ rm function.zip
 echo "get-reports deployed."
 cd ../..
 
+# ─── 5b. Deploy update-report ────────────────────────────────────────────────
+echo ""
+echo "--- Deploying update-report Lambda ---"
+cd lambdas/update_report
+zip -r function.zip lambda_function.py > /dev/null
+
+aws lambda get-function --function-name update-report --region $REGION > /dev/null 2>&1 \
+  && aws lambda update-function-code \
+      --function-name update-report \
+      --zip-file fileb://function.zip \
+      --region $REGION > /dev/null \
+  || aws lambda create-function \
+      --function-name update-report \
+      --runtime python3.11 \
+      --handler lambda_function.lambda_handler \
+      --role "$LAMBDA_ROLE" \
+      --zip-file fileb://function.zip \
+      --region $REGION > /dev/null
+
+rm function.zip
+echo "update-report deployed."
+cd ../..
+
 # ─── 6. Deploy export-pdf ─────────────────────────────────────────────────────
 echo ""
 echo "--- Deploying export-pdf Lambda ---"
@@ -201,6 +224,27 @@ aws lambda add-permission --function-name validate-report --statement-id apigate
   --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/validate-report" \
   --region $REGION > /dev/null 2>/dev/null || true
 echo "validate-report route configured."
+
+# update-report resource
+UPDATE_REPORT_ID=$(aws apigateway get-resources \
+  --rest-api-id $API_ID --region $REGION \
+  --query 'items[?pathPart==`update-report`].id' --output text)
+if [ -z "$UPDATE_REPORT_ID" ]; then
+  UPDATE_REPORT_ID=$(aws apigateway create-resource \
+    --rest-api-id $API_ID --parent-id $ROOT_ID \
+    --path-part update-report --region $REGION --query id --output text)
+fi
+aws apigateway put-method --rest-api-id $API_ID --resource-id $UPDATE_REPORT_ID \
+  --http-method POST --authorization-type NONE --region $REGION > /dev/null 2>/dev/null || true
+aws apigateway put-integration --rest-api-id $API_ID --resource-id $UPDATE_REPORT_ID \
+  --http-method POST --type AWS_PROXY --integration-http-method POST \
+  --uri "arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$REGION:$ACCOUNT_ID:function:update-report/invocations" \
+  --region $REGION > /dev/null 2>/dev/null || true
+aws lambda add-permission --function-name update-report --statement-id apigateway-post \
+  --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/update-report" \
+  --region $REGION > /dev/null 2>/dev/null || true
+echo "update-report route configured."
 
 # get-reports resource
 GET_REPORTS_ID=$(aws apigateway get-resources \

@@ -116,34 +116,16 @@ def generate_police_pdf(report: dict) -> bytes:
     for i, offense in enumerate(report.get("offenses", [{}])):
         if i > 0:
             pdf.ln(2)
-        add_field(pdf, "UCR Code", offense.get("ucr_offense_code"))
         add_field(pdf, "Description", offense.get("offense_description"))
         add_field(pdf, "Attempted/Completed", offense.get("attempted_or_completed"))
         add_field(pdf, "Weapon/Force", ", ".join(offense.get("weapon_force_used", [])))
-        add_field(pdf, "Bias Motivation", offense.get("bias_motivation"))
     pdf.ln(3)
-
-    # Victims
-    add_section(pdf, "VICTIM(S)", police_blue)
-    for victim in report.get("victims", [{}]):
-        add_field(pdf, "Name", victim.get("name"))
-        pdf.ln(2)
 
     # Offenders
     add_section(pdf, "OFFENDER(S)", police_blue)
     for offender in report.get("offenders", [{}]):
         add_field(pdf, "Name", offender.get("name"))
         pdf.ln(2)
-
-    # Narrative
-    add_section(pdf, "NARRATIVE", police_blue)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.multi_cell(0, 6, sanitize(report.get("narrative", "")))
-    pdf.ln(3)
-
-    add_section(pdf, "SYNOPSIS", police_blue)
-    pdf.set_font("Helvetica", "", 9)
-    pdf.multi_cell(0, 6, sanitize(report.get("synopsis", "")))
 
     return pdf.output()
 

@@ -13,6 +13,7 @@ export default function ReportScreen() {
   const [validation, setValidation] = useState<any>(null)
   const [selectedField, setSelectedField] = useState<any>(null)
   const [inputValue, setInputValue] = useState<string>('')
+  const [reportMeta, setReportMeta] = useState<{ report_id: string; timestamp: string; user_id: string } | null>(null)
 
   const runValidation = async (fields: Record<string, any>, type: string) => {
     try {
@@ -29,9 +30,10 @@ export default function ReportScreen() {
     }
   }
 
-  const handleFieldsExtracted = async (fields: Record<string, any>, type: string) => {
+  const handleFieldsExtracted = async (fields: Record<string, any>, type: string, reportId: string, timestamp: string, userId: string) => {
     setFormData(fields)
     setReportType(type)
+    setReportMeta({ report_id: reportId, timestamp, user_id: userId })
     await runValidation(fields, type)
   }
 
@@ -44,7 +46,7 @@ export default function ReportScreen() {
     if (!selectedField || !inputValue.trim()) return
 
     const keys = selectedField.field.replace(/\[0\]/g, '.0').split('.')
-    const updatedData = { ...formData }
+    const updatedData = JSON.parse(JSON.stringify(formData))
     let obj: any = updatedData
     for (let i = 0; i < keys.length - 1; i++) {
       if (!obj[keys[i]]) obj[keys[i]] = {}
@@ -57,11 +59,29 @@ export default function ReportScreen() {
     setInputValue('')
 
     await runValidation(updatedData, reportType)
+
+    // Sync updated fields back to DynamoDB
+    if (reportMeta) {
+      try {
+        await fetch(`${API}/update-report`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: reportMeta.user_id,
+            timestamp: reportMeta.timestamp,
+            fields: updatedData,
+          }),
+        })
+      } catch (err) {
+        console.error('Failed to sync fields to DynamoDB:', err)
+      }
+    }
   }
 
   const handleExportPDF = async () => {
     try {
-      const reportId = `report-${Date.now()}`
+      const reportId = reportMeta?.report_id || `report-${Date.now()}`
+      console.log('Exporting formData:', JSON.stringify(formData))
       const exportRes = await fetch(`${API}/export-pdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,8 +161,8 @@ export default function ReportScreen() {
           )}
 
           {validation.is_complete && (
-            <TouchableOpacity style={styles.exportBtn} onPress={() => router.push('/past-reports')}>
-              <Text style={styles.exportText}>📄 View Past Reports</Text>
+            <TouchableOpacity style={styles.exportBtn} onPress={handleExportPDF}>
+              <Text style={styles.exportText}>📄 Export PDF</Text>
             </TouchableOpacity>
           )}
 

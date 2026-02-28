@@ -12,7 +12,7 @@ import * as FileSystem from 'expo-file-system/legacy'
 const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL || 'https://vsbhthrfr0.execute-api.us-east-1.amazonaws.com/prod'
 
 interface MicButtonProps {
-  onFieldsExtracted: (fields: Record<string, any>, reportType: string) => void
+  onFieldsExtracted: (fields: Record<string, any>, reportType: string, reportId: string, timestamp: string, userId: string) => void
 }
 
 export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
@@ -97,10 +97,10 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript, user_id: userId })
       })
-      const { fields, report_type } = await parseRes.json()
+      const { fields, report_type, report_id, timestamp } = await parseRes.json()
       console.log('Parse response fields:', JSON.stringify(fields))
 
-      onFieldsExtracted(fields, report_type)
+      onFieldsExtracted(fields, report_type, report_id, timestamp, userId)
     } catch (err) {
       console.error('Error processing audio:', err)
     } finally {
