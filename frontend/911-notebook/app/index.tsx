@@ -113,7 +113,7 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
           <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btn}>
+        <TouchableOpacity style={styles.btn} onPress={() => router.push('/past-reports')}>
           <View style={styles.btnIcon}>
             <Feather name="file-text" size={18} color="#fff" />
           </View>

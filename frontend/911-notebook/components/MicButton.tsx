@@ -9,7 +9,7 @@ import {
 import { useAudioRecorder, AudioModule, RecordingPresets } from 'expo-audio'
 import * as FileSystem from 'expo-file-system/legacy'
 
-const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL
+const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL || 'https://vsbhthrfr0.execute-api.us-east-1.amazonaws.com/prod'
 
 interface MicButtonProps {
   onFieldsExtracted: (fields: Record<string, any>, reportType: string) => void
@@ -61,20 +61,25 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
       })
       const transcribeData = await transcribeRes.json()
       console.log('Transcribe response:', JSON.stringify(transcribeData))
-      const transcribeBody = JSON.parse(transcribeData.body)
-      const { transcript } = transcribeBody
+      const { transcript } = transcribeData
       setStatus('parsing')
-      
+
+      // Get user id for DynamoDB save
+      let userId = 'unknown'
+      try {
+        const { getCurrentUser } = await import('aws-amplify/auth')
+        const user = await getCurrentUser()
+        userId = user.signInDetails?.loginId || user.userId
+      } catch { /* dev bypass */ }
+
       // 3. Send to Lambda 2 — parse report (no report_type needed, AI detects it)
       const parseRes = await fetch(`${API}/parse-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript })
+        body: JSON.stringify({ transcript, user_id: userId })
       })
-      const rawParse = await parseRes.json()
-      console.log('Raw parse response:', JSON.stringify(rawParse))
-      const parseBody = JSON.parse(rawParse.body)
-      const { fields, report_type } = parseBody
+      const { fields, report_type } = await parseRes.json()
+      console.log('Parse response fields:', JSON.stringify(fields))
 
       // 4. Send fields and report type back to form
       onFieldsExtracted(fields, report_type)

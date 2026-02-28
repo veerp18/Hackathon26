@@ -34,7 +34,7 @@ aws dynamodb create-table \
   --region $REGION \
   2>/dev/null && echo "Table created." || echo "Table already exists, skipping."
 
-# ─── 2. S3 Bucket ─────────────────────────────────────────────────────────────
+# ─── 2. S3 Buckets ────────────────────────────────────────────────────────────
 echo ""
 echo "--- Creating S3 bucket: 911-reports-pdf ---"
 aws s3api create-bucket \
@@ -42,9 +42,15 @@ aws s3api create-bucket \
   --region $REGION \
   2>/dev/null && echo "Bucket created." || echo "Bucket already exists, skipping."
 
+echo "--- Creating S3 bucket: 911-audio-temp ---"
+aws s3api create-bucket \
+  --bucket 911-audio-temp \
+  --region $REGION \
+  2>/dev/null && echo "Bucket created." || echo "Bucket already exists, skipping."
+
 # ─── 3. IAM Permissions ───────────────────────────────────────────────────────
 echo ""
-echo "--- Adding DynamoDB + S3 permissions to Lambda role ---"
+echo "--- Adding permissions to Lambda role ---"
 ROLE_NAME=$(echo $LAMBDA_ROLE | sed 's/.*role\///')
 
 aws iam attach-role-policy \
@@ -56,6 +62,11 @@ aws iam attach-role-policy \
   --role-name "$ROLE_NAME" \
   --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess \
   2>/dev/null && echo "S3 policy attached." || echo "Already attached."
+
+aws iam attach-role-policy \
+  --role-name "$ROLE_NAME" \
+  --policy-arn arn:aws:iam::aws:policy/AmazonTranscribeFullAccess \
+  2>/dev/null && echo "Transcribe policy attached." || echo "Already attached."
 
 # ─── 4. Deploy parse-report ───────────────────────────────────────────────────
 echo ""
@@ -119,7 +130,7 @@ rm function.zip
 echo "export-pdf deployed."
 cd ../..
 
-# ─── 7. API Gateway — get-reports + export-pdf ────────────────────────────────
+# ─── 7. API Gateway — all routes ─────────────────────────────────────────────
 echo ""
 echo "--- Adding API Gateway routes ---"
 
@@ -127,6 +138,69 @@ ROOT_ID=$(aws apigateway get-resources \
   --rest-api-id $API_ID \
   --region $REGION \
   --query 'items[?path==`/`].id' --output text)
+
+# transcribe resource
+TRANSCRIBE_ID=$(aws apigateway get-resources \
+  --rest-api-id $API_ID --region $REGION \
+  --query 'items[?pathPart==`transcribe`].id' --output text)
+if [ -z "$TRANSCRIBE_ID" ]; then
+  TRANSCRIBE_ID=$(aws apigateway create-resource \
+    --rest-api-id $API_ID --parent-id $ROOT_ID \
+    --path-part transcribe --region $REGION --query id --output text)
+fi
+aws apigateway put-method --rest-api-id $API_ID --resource-id $TRANSCRIBE_ID \
+  --http-method POST --authorization-type NONE --region $REGION > /dev/null 2>/dev/null || true
+aws apigateway put-integration --rest-api-id $API_ID --resource-id $TRANSCRIBE_ID \
+  --http-method POST --type AWS_PROXY --integration-http-method POST \
+  --uri "arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$REGION:$ACCOUNT_ID:function:911-transcribe/invocations" \
+  --region $REGION > /dev/null 2>/dev/null || true
+aws lambda add-permission --function-name 911-transcribe --statement-id apigateway-post \
+  --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/transcribe" \
+  --region $REGION > /dev/null 2>/dev/null || true
+echo "transcribe route configured."
+
+# parse-report resource
+PARSE_ID=$(aws apigateway get-resources \
+  --rest-api-id $API_ID --region $REGION \
+  --query 'items[?pathPart==`parse-report`].id' --output text)
+if [ -z "$PARSE_ID" ]; then
+  PARSE_ID=$(aws apigateway create-resource \
+    --rest-api-id $API_ID --parent-id $ROOT_ID \
+    --path-part parse-report --region $REGION --query id --output text)
+fi
+aws apigateway put-method --rest-api-id $API_ID --resource-id $PARSE_ID \
+  --http-method POST --authorization-type NONE --region $REGION > /dev/null 2>/dev/null || true
+aws apigateway put-integration --rest-api-id $API_ID --resource-id $PARSE_ID \
+  --http-method POST --type AWS_PROXY --integration-http-method POST \
+  --uri "arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$REGION:$ACCOUNT_ID:function:parse-report/invocations" \
+  --region $REGION > /dev/null 2>/dev/null || true
+aws lambda add-permission --function-name parse-report --statement-id apigateway-post \
+  --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/parse-report" \
+  --region $REGION > /dev/null 2>/dev/null || true
+echo "parse-report route configured."
+
+# validate-report resource
+VALIDATE_ID=$(aws apigateway get-resources \
+  --rest-api-id $API_ID --region $REGION \
+  --query 'items[?pathPart==`validate-report`].id' --output text)
+if [ -z "$VALIDATE_ID" ]; then
+  VALIDATE_ID=$(aws apigateway create-resource \
+    --rest-api-id $API_ID --parent-id $ROOT_ID \
+    --path-part validate-report --region $REGION --query id --output text)
+fi
+aws apigateway put-method --rest-api-id $API_ID --resource-id $VALIDATE_ID \
+  --http-method POST --authorization-type NONE --region $REGION > /dev/null 2>/dev/null || true
+aws apigateway put-integration --rest-api-id $API_ID --resource-id $VALIDATE_ID \
+  --http-method POST --type AWS_PROXY --integration-http-method POST \
+  --uri "arn:aws:apigateway:$REGION:lambda:path/2015-03-31/functions/arn:aws:lambda:$REGION:$ACCOUNT_ID:function:validate-report/invocations" \
+  --region $REGION > /dev/null 2>/dev/null || true
+aws lambda add-permission --function-name validate-report --statement-id apigateway-post \
+  --action lambda:InvokeFunction --principal apigateway.amazonaws.com \
+  --source-arn "arn:aws:execute-api:$REGION:$ACCOUNT_ID:$API_ID/*/POST/validate-report" \
+  --region $REGION > /dev/null 2>/dev/null || true
+echo "validate-report route configured."
 
 # get-reports resource
 GET_REPORTS_ID=$(aws apigateway get-resources \
