@@ -48,20 +48,39 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
 
       if (!uri) throw new Error('No audio URI')
 
-      // 1. Convert audio to base64
       const base64Audio = await FileSystem.readAsStringAsync(uri, {
         encoding: 'base64'
       })
 
-      // 2. Send to Lambda 1 — transcribe
-      const transcribeRes = await fetch(`${API}/transcribe`, {
+      // 1. Start transcription job
+      const startRes = await fetch(`${API}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio: base64Audio })
       })
-      const transcribeData = await transcribeRes.json()
-      console.log('Transcribe response:', JSON.stringify(transcribeData))
-      const { transcript } = transcribeData
+      const startData = await startRes.json()
+      const jobName = startData.job_name
+
+      // 2. Poll until complete
+      let transcript = ''
+      while (true) {
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        const pollRes = await fetch(`${API}/transcribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ job_name: jobName })
+        })
+        const pollBody = await pollRes.json()
+
+        if (pollBody.status === 'COMPLETED') {
+          transcript = pollBody.transcript
+          break
+        } else if (pollBody.status === 'FAILED') {
+          throw new Error('Transcription failed')
+        }
+        // Still IN_PROGRESS, keep polling
+      }
+
       setStatus('parsing')
 
       // Get user id for DynamoDB save
@@ -72,7 +91,7 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
         userId = user.signInDetails?.loginId || user.userId
       } catch { /* dev bypass */ }
 
-      // 3. Send to Lambda 2 — parse report (no report_type needed, AI detects it)
+      // 3. Parse report
       const parseRes = await fetch(`${API}/parse-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,7 +100,6 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
       const { fields, report_type } = await parseRes.json()
       console.log('Parse response fields:', JSON.stringify(fields))
 
-      // 4. Send fields and report type back to form
       onFieldsExtracted(fields, report_type)
     } catch (err) {
       console.error('Error processing audio:', err)

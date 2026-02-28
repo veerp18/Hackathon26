@@ -84,10 +84,11 @@ export default function PastReportsScreen() {
         }),
       });
       const data = await res.json();
+      console.log('Export PDF response:', JSON.stringify(data));
       if (data.pdf_url) {
         await Linking.openURL(data.pdf_url);
       } else {
-        throw new Error('No PDF URL returned');
+        throw new Error(data.error || JSON.stringify(data));
       }
     } catch (err: any) {
       Alert.alert('Export Failed', err.message);
