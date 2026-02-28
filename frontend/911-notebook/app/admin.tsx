@@ -1,87 +1,119 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { post } from 'aws-amplify/api'; // We'll use this for the Lambda
+import { 
+  View, Text, TextInput, TouchableOpacity, 
+  StyleSheet, Alert, ActivityIndicator, ScrollView 
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+
+// AWS Amplify & Auth Imports
+import { fetchAuthSession } from 'aws-amplify/auth';
+import outputs from '../amplify_outputs.json';
+
 
 export default function AdminScreen() {
+  const router = useRouter();
   const [newEmail, setNewEmail] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
+
+
+// ... inside your AdminScreen component ...
+
   const handleAddResponder = async () => {
     if (!newEmail.includes('@')) {
-      Alert.alert("Invalid Email", "Please enter a valid responder email.");
+      Alert.alert("Invalid Entry", "Please enter a valid responder email.");
       return;
     }
 
     setIsCreating(true);
     try {
-      // Calling the Lambda function we defined earlier via API
-      const restOperation = post({
-        apiName: 'adminApi',
-        path: '/create-user',
-        options: { body: { email: newEmail.trim() } }
+      // 1. Get the current user's JWT token (required for the Authorizer)
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString();
+
+      // 2. Get the API URL from the custom outputs we defined in backend.ts
+      const apiUrl = outputs.custom.adminApiUrl; 
+
+      // 3. Make a direct POST request
+      const response = await fetch(`${apiUrl}create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token || '',
+        },
+        body: JSON.stringify({ email: newEmail.trim() }),
       });
-      
-      await restOperation.response;
-      Alert.alert("Success", `Account created for ${newEmail}. They will receive an email with instructions.`);
-      setNewEmail('');
+
+      if (response.ok) {
+        Alert.alert("Success", `Credentials deployed to ${newEmail}`);
+        setNewEmail('');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create user");
+      }
     } catch (error: any) {
       console.error(error);
-      Alert.alert("System Error", error.message || "Could not create user.");
+      Alert.alert("System Error", error.message);
     } finally {
       setIsCreating(false);
     }
   };
 
+
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <ScrollView className="p-6">
-        <Text className="text-3xl font-bold text-white mb-2">Command Center</Text>
-        <Text className="text-slate-400 mb-8">Admin Access: System & Personnel</Text>
+    <ScrollView style={styles.container}>
+      <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <Feather name="arrow-left" size={24} color="#5a5f6e" />
+      </TouchableOpacity>
 
-        {/* System Stats Section */}
-        <View className="flex-row justify-between mb-8">
-          <View className="bg-slate-800 p-4 rounded-xl w-[48%] border border-emerald-500/30">
-            <Text className="text-slate-400 text-xs uppercase font-bold">System Status</Text>
-            <Text className="text-emerald-400 text-xl font-bold">ACTIVE</Text>
-          </View>
-          <View className="bg-slate-800 p-4 rounded-xl w-[48%] border border-slate-700">
-            <Text className="text-slate-400 text-xs uppercase font-bold">Active Units</Text>
-            <Text className="text-white text-xl font-bold">12</Text>
-          </View>
-        </View>
+      <Text style={styles.title}>Command Center</Text>
+      <Text style={styles.subtitle}>Personnel & System Management</Text>
 
-        {/* Add New Responder Section */}
-        <View className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
-          <Text className="text-xl font-semibold text-white mb-4">Add New Responder</Text>
-          <Text className="text-slate-400 mb-4 text-sm">
-            This will create a new account and trigger a temporary passcode email.
-          </Text>
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Add New Responder</Text>
+        <Text style={styles.cardInfo}>
+          This will trigger an automated email with a temporary passcode.
+        </Text>
 
-          <TextInput
-            className="bg-slate-900 text-white p-4 rounded-lg mb-4 border border-slate-600"
-            placeholder="Responder Email (e.g. officer@city.gov)"
-            placeholderTextColor="#64748b"
-            value={newEmail}
-            onChangeText={setNewEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+        <TextInput
+          style={styles.input}
+          placeholder="officer@agency.gov"
+          placeholderTextColor="#5a5f6e"
+          value={newEmail}
+          onChangeText={setNewEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
 
-          <TouchableOpacity 
-            onPress={handleAddResponder}
-            disabled={isCreating}
-            className={`p-4 rounded-lg flex-row justify-center items-center ${isCreating ? 'bg-slate-600' : 'bg-blue-600'}`}
-          >
-            {isCreating ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold text-lg">Deploy Credentials</Text>}
-          </TouchableOpacity>
-        </View>
-
-        {/* Danger Zone */}
-        <TouchableOpacity className="mt-12 self-center">
-          <Text className="text-red-500 font-semibold text-sm">Emergency System Lockout</Text>
+        <TouchableOpacity 
+          style={[styles.deployBtn, isCreating && { opacity: 0.6 }]} 
+          onPress={handleAddResponder}
+          disabled={isCreating}
+        >
+          {isCreating ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Feather name="shield" size={18} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.deployText}>Deploy Credentials</Text>
+            </>
+          )}
         </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0e0f11', padding: 24 },
+  backBtn: { marginTop: 40, marginBottom: 20 },
+  title: { fontSize: 32, color: '#e8e9ec', fontWeight: 'bold' },
+  subtitle: { color: '#5a5f6e', marginBottom: 32 },
+  card: { backgroundColor: '#14161a', padding: 24, borderRadius: 16, borderOuterWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  cardTitle: { color: '#e8e9ec', fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  cardInfo: { color: '#5a5f6e', fontSize: 13, marginBottom: 20, lineHeight: 18 },
+  input: { backgroundColor: '#0e0f11', color: '#fff', padding: 16, borderRadius: 8, marginBottom: 16, borderSize: 1, borderColor: '#25262b' },
+  deployBtn: { backgroundColor: '#c0392b', padding: 16, borderRadius: 8, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  deployText: { color: '#fff', fontWeight: 'bold', fontSize: 16 }
+});

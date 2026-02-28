@@ -131,6 +131,17 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
           <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.btn} onPress={() => router.push('/admin')}>
+          <View style={styles.btnIcon}>
+            <Feather name="settings" size={18} color="#fff" />
+          </View>
+          <View style={styles.btnText}>
+            <Text style={styles.btnTitle}>Admin Settings</Text>
+            <Text style={styles.btnSub}>Manage agency personnel</Text>
+          </View>
+          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
+      </TouchableOpacity>
+
         <TouchableOpacity style={styles.btn} onPress={onLogout}>
           <View style={styles.btnIcon}>
             <Feather name="log-out" size={18} color="#fff" />
