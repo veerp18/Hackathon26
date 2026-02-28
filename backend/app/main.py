@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 from app.config import get_settings
 from app.routes import organizations, users
 
@@ -35,7 +36,6 @@ app.include_router(users.router)
 
 if __name__ == "__main__":
     import uvicorn
-    from datetime import datetime
     
     uvicorn.run(
         "app.main:app",

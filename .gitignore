@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+
+# Environment variables
+.env
+.env.local
+
+# AWS credentials (should never be committed)
+~/.aws/
+
+# Sensitive files with passwords
+COGNITO_USERS.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.egg
+
+# Logs
+*.log
