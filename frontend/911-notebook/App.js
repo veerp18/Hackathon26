@@ -3,16 +3,46 @@ import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 
+function HomeScreen() {
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <Text style={styles.homeTitle}>911 Notepad</Text>
+      <Text style={styles.homeGreeting}>Welcome, Responder</Text>
+
+      <View style={styles.cardContainer}>
+        <TouchableOpacity style={styles.card}>
+          <Text style={styles.cardIcon}>🎙️</Text>
+          <Text style={styles.cardTitle}>New Report</Text>
+          <Text style={styles.cardSub}>Start a voice incident report</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.card}>
+          <Text style={styles.cardIcon}>📋</Text>
+          <Text style={styles.cardTitle}>Past Reports</Text>
+          <Text style={styles.cardSub}>View your filed reports</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.card, styles.cardSmall]}>
+          <Text style={styles.cardIcon}>👤</Text>
+          <Text style={styles.cardTitle}>Account</Text>
+          <Text style={styles.cardSub}>Your profile & settings</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
-  const handleLogin = () => {
-    // TODO: wire up Supabase auth
-    console.log('Login pressed', email, password);
-  };
+  if (loggedIn) {
+    return <HomeScreen />;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -46,7 +76,7 @@ export default function App() {
           onChangeText={setPassword}
           secureTextEntry
         />
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <TouchableOpacity style={styles.button} onPress={() => setLoggedIn(true)}>
           <Text style={styles.buttonText}>Log In</Text>
         </TouchableOpacity>
       </View>
@@ -101,5 +131,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+
+  // Home screen
+  homeTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  homeGreeting: {
+    fontSize: 14,
+    color: '#aaa',
+    marginBottom: 48,
+  },
+  cardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 16,
+  },
+  card: {
+    backgroundColor: '#2a2a3e',
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    borderWidth: 1,
+    borderColor: '#3a3a5e',
+  },
+  cardSmall: {
+    paddingVertical: 18,
+  },
+  cardIcon: {
+    fontSize: 32,
+    marginBottom: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  cardSub: {
+    fontSize: 13,
+    color: '#aaa',
   },
 });
