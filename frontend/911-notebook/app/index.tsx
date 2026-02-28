@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Amplify } from 'aws-amplify';
 import { signIn } from 'aws-amplify/auth';
+import {confirmSignIn} from 'aws-amplify/auth'
 // Note: This file is generated once you run 'npx amplify sandbox'
 import outputs from '../amplify_outputs.json'; 
 
@@ -169,62 +170,86 @@ export default function App(): JSX.Element {
     checkUser();
   }, []);
 
-  const checkUser = async () => {
-    try {
-      await getCurrentUser();
-      setLoggedIn(true);
-    } catch (err) {
-      setLoggedIn(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      setLoggedIn(false);
-    } catch (error) {
-      console.log("Error signing out: ", error);
-    }
-  };
+    const handleConfirmPassword = async (newPassword: string) => {
+      console.log("Attempting to set new password...");
+      setIsLoading(true);
+      try {
+        const result = await confirmSignIn({
+          challengeResponse: newPassword
+        });
+        
+        console.log("Confirm Sign In Result:", result);
+
+        if (result.isSignedIn) {
+          console.log("Login Successful after password change!");
+          setLoggedIn(true);
+        } else {
+          console.log("Password changed, but next step is:", result.nextStep.signInStep);
+          Alert.alert("Success", "Password updated! Please log in with your new password.");
+        }
+      } catch (error: any) {
+        console.error("CRITICAL ERROR during confirmSignIn:", error);
+        Alert.alert("Reset Failed", error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+
+    const checkUser = async () => {
+      try {
+        await getCurrentUser();
+        setLoggedIn(true);
+      } catch (err) {
+        setLoggedIn(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const handleLogout = async () => {
+      try {
+        await signOut();
+        setLoggedIn(false);
+      } catch (error) {
+        console.log("Error signing out: ", error);
+      }
+    };
 
   // Handle Password Confirmation for Admin-created users
-  const handleConfirmPassword = async (newPassword: string) => {
-    try {
-      const { isSignedIn } = await confirmSignIn({
-        challengeResponse: newPassword
-      });
-      if (isSignedIn) {
-        setLoggedIn(true);
-        Alert.alert("Success", "Password updated. Welcome to the system.");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
-    }
-  };
+
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Input Required", "Please enter both Responder ID and Passcode.");
-      return;
-    }
     setIsLoading(true);
     try {
-      const { isSignedIn } = await signIn({ 
+      const { isSignedIn, nextStep } = await signIn({ 
         username: email.trim(), 
         password: password 
       });
 
+      console.log("Sign In Step:", nextStep.signInStep); // Check F12 Console for this!
+
       if (isSignedIn) {
         setLoggedIn(true);
+      } 
+      else if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        // Use window.prompt because Alert.prompt is mobile-only
+        const newPassword = window.prompt("New Password Required. Please enter a permanent password:");
+        if (newPassword) {
+          handleConfirmPassword(newPassword);
+        } else {
+          setIsLoading(false);
+        }
       }
     } catch (error: any) {
+      console.error("Login Error:", error);
       Alert.alert("Login Failed", error.message);
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // ← DEV BYPASS
   const handleDevBypass = () => {
