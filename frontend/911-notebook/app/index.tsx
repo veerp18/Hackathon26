@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { Amplify } from 'aws-amplify';
 import { signIn, signOut, confirmSignIn, fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
@@ -31,9 +32,10 @@ function PulseDot() {
 function HomeScreen({ onLogout, isAdmin }: { onLogout: () => void, isAdmin: boolean }): JSX.Element {
   const router = useRouter();
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.homeContainer}>
+    <View style={[styles.homeContainer, { paddingTop: Math.max(insets.top + 16, 32) }]}>
       <StatusBar style="light" />
       <View style={styles.badge}>
         <PulseDot />
@@ -212,11 +214,11 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   devButton: { borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 8 },
   devButtonText: { color: '#0e0f11', fontSize: 13 },
-  homeContainer: { flex: 1, backgroundColor: '#0e0f11', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 32 },
+  homeContainer: { flex: 1, backgroundColor: '#0e0f11', paddingHorizontal: 24, paddingBottom: 32 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: 'rgba(192,57,43,0.12)', borderWidth: 1, borderColor: 'rgba(192,57,43,0.2)', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 18 },
   pulseDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#e74c3c' },
   badgeText: { fontSize: 10, color: '#e74c3c', letterSpacing: 1.5, fontWeight: '500' },
-  logo: { fontSize: 58, lineHeight: 52, color: '#e8e9ec', letterSpacing: 1 },
+  logo: { fontSize: 58, lineHeight: 64, color: '#e8e9ec', letterSpacing: 1 },
   logoAccent: { color: '#e74c3c' },
   tagline: { marginTop: 14, fontSize: 13, color: '#5a5f6e', lineHeight: 20 },
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 28 },
