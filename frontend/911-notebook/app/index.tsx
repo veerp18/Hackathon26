@@ -2,12 +2,23 @@ import { StatusBar } from 'expo-status-bar';
 import { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Animated,
+  KeyboardAvoidingView, Platform, Animated, Alert, ActivityIndicator
 } from 'react-native';
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 
+// AWS Amplify Imports
+import { Amplify } from 'aws-amplify';
+import { signIn } from 'aws-amplify/auth';
+// Note: This file is generated once you run 'npx amplify sandbox'
+import outputs from '../amplify_outputs.json'; 
+
+Amplify.configure(outputs);
+
+/**
+ * PulseDot Component: Used for the "Active System" badge animation.
+ */
 function PulseDot() {
   const opacity = useRef(new Animated.Value(1)).current;
 
@@ -23,7 +34,10 @@ function PulseDot() {
   return <Animated.View style={[styles.pulseDot, { opacity }]} />;
 }
 
-function HomeScreen(): JSX.Element {
+/**
+ * HomeScreen Component: The "Logged In" view.
+ */
+function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
   const router = useRouter();
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
@@ -31,24 +45,21 @@ function HomeScreen(): JSX.Element {
     <View style={styles.homeContainer}>
       <StatusBar style="light" />
 
-      {/* Badge */}
       <View style={styles.badge}>
         <PulseDot />
         <Text style={styles.badgeText}>ACTIVE SYSTEM</Text>
       </View>
 
-      {/* Logo */}
       <Text style={[styles.logo, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
         {'911\n'}<Text style={styles.logoAccent}>Notepad</Text>
       </Text>
+      
       <Text style={styles.tagline}>
         {'Field reporting for first responders.\nFast. Accurate. Secure.'}
       </Text>
 
-      {/* Divider */}
       <View style={styles.divider} />
 
-      {/* Stats */}
       <View style={styles.stats}>
         <View style={styles.stat}>
           <Text style={styles.statVal}>24</Text>
@@ -64,7 +75,6 @@ function HomeScreen(): JSX.Element {
         </View>
       </View>
 
-      {/* Actions */}
       <View style={styles.actions}>
         <TouchableOpacity style={[styles.btn, styles.btnPrimary]} onPress={() => router.push('/report')}>
           <View style={[styles.btnIcon, styles.btnIconPrimary]}>
@@ -88,19 +98,17 @@ function HomeScreen(): JSX.Element {
           <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.btn}>
+        <TouchableOpacity style={styles.btn} onPress={onLogout}>
           <View style={styles.btnIcon}>
-            <Feather name="user" size={18} color="#fff" />
+            <Feather name="log-out" size={18} color="#fff" />
           </View>
           <View style={styles.btnText}>
-            <Text style={styles.btnTitle}>Account</Text>
-            <Text style={styles.btnSub}>Profile, credentials & settings</Text>
+            <Text style={styles.btnTitle}>Sign Out</Text>
+            <Text style={styles.btnSub}>End current shift session</Text>
           </View>
-          <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
       </View>
 
-      {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>UNIT #4827 · BADGE 0392</Text>
         <View style={styles.footerDot} />
@@ -110,14 +118,45 @@ function HomeScreen(): JSX.Element {
   );
 }
 
+/**
+ * Main App Component: Handles Login logic and routing.
+ */
 export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
+  // Handle Cognito Sign-In
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Input Required", "Please enter both Responder ID and Passcode.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { isSignedIn, nextStep } = await signIn({ 
+        username: email, 
+        password: password 
+      });
+
+      if (isSignedIn) {
+        setLoggedIn(true);
+      } else if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        Alert.alert("New Password Required", "An admin created this account. Please use the web portal to set a permanent password.");
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert("Authentication Failed", "Invalid credentials. Please check your ID and passcode.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (loggedIn) {
-    return <HomeScreen />;
+    return <HomeScreen onLogout={() => setLoggedIn(false)} />;
   }
 
   return (
@@ -137,12 +176,13 @@ export default function App(): JSX.Element {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Responder ID"
+          placeholder="Responder ID (Email)"
           placeholderTextColor="#888"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          editable={!isLoading}
         />
         <TextInput
           style={styles.input}
@@ -151,9 +191,18 @@ export default function App(): JSX.Element {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          editable={!isLoading}
         />
-        <TouchableOpacity style={styles.button} onPress={() => setLoggedIn(true)}>
-          <Text style={styles.buttonText}>Log In</Text>
+        <TouchableOpacity 
+          style={[styles.button, isLoading && { opacity: 0.7 }]} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Log In</Text>
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -161,7 +210,6 @@ export default function App(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  // --- Login screen ---
   container: {
     flex: 1,
     backgroundColor: '#0e0f11',
@@ -184,8 +232,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   form: {
-    width: '45%',
-    minWidth: 200,
+    width: '100%',
+    maxWidth: 320,
   },
   input: {
     backgroundColor: '#14161a',
@@ -209,8 +257,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
-  // --- Home screen ---
   homeContainer: {
     flex: 1,
     backgroundColor: '#0e0f11',
