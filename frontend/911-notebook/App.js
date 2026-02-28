@@ -1,10 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
   const handleLogin = () => {
     // TODO: wire up Supabase auth
@@ -19,14 +22,16 @@ export default function App() {
       <StatusBar style="light" />
 
       <View style={styles.header}>
-        <Text style={styles.title}>911 Notepad</Text>
+        <Text style={[styles.title, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
+          911 Notepad
+        </Text>
         <Text style={styles.subtitle}>First Responder Field Notes</Text>
       </View>
 
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Responder ID"
           placeholderTextColor="#888"
           value={email}
           onChangeText={setEmail}
@@ -35,7 +40,7 @@ export default function App() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder="Passcode"
           placeholderTextColor="#888"
           value={password}
           onChangeText={setPassword}
@@ -62,10 +67,9 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 42,
     color: '#fff',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   subtitle: {
     fontSize: 14,
@@ -73,7 +77,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   form: {
-    width: '100%',
+    width: '45%',
+    minWidth: 200,
   },
   input: {
     backgroundColor: '#2a2a3e',
