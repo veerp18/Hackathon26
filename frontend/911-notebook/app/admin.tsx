@@ -20,46 +20,61 @@ export default function AdminScreen() {
 
 // ... inside your AdminScreen component ...
 
-  const handleAddResponder = async () => {
-    if (!newEmail.includes('@')) {
-      Alert.alert("Invalid Entry", "Please enter a valid responder email.");
-      return;
-    }
+    const handleAddResponder = async () => {
+        if (!newEmail.includes('@')) {
+          Alert.alert("Invalid Entry", "Please enter a valid responder email.");
+          return;
+        }
 
-    setIsCreating(true);
-    try {
-      // 1. Get the current user's JWT token (required for the Authorizer)
-      const session = await fetchAuthSession();
-      const token = session.tokens?.idToken?.toString();
+        setIsCreating(true);
+        try {
+          // 1. Get the current user's JWT token
+          const session = await fetchAuthSession();
+          // Use the accessToken or idToken depending on your backend authorizer config
+          // Usually, it's the idToken.toString()
+          const token = session.tokens?.idToken?.toString();
 
-      // 2. Get the API URL from the custom outputs we defined in backend.ts
-      const apiUrl = outputs.custom.adminApiUrl; 
+          if (!token) {
+            throw new Error("No active session found. Please log in again.");
+          }
 
-      // 3. Make a direct POST request
-      const response = await fetch(`${apiUrl}create-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token || '',
-        },
-        body: JSON.stringify({ email: newEmail.trim() }),
-      });
+          // 2. Get the API URL
+          const apiUrl = outputs.custom.adminApiUrl; 
 
-      if (response.ok) {
-        Alert.alert("Success", `Credentials deployed to ${newEmail}`);
-        setNewEmail('');
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create user");
-      }
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert("System Error", error.message);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+          // 3. Make the POST request with the 'Bearer' prefix
+          const response = await fetch(`${apiUrl}create-user`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // CRITICAL: Added 'Bearer ' prefix
+              'Authorization': `Bearer ${token}`, 
+            },
+            body: JSON.stringify({ email: newEmail.trim().toLowerCase() }),
+          });
 
+          // Handle the response
+          if (response.ok) {
+            Alert.alert("Success", `Credentials deployed to ${newEmail}`);
+            setNewEmail('');
+          } else {
+            // Attempt to parse error message from Lambda
+            const errorText = await response.text();
+            let message = "Failed to create user";
+            try {
+              const errorData = JSON.parse(errorText);
+              message = errorData.message || message;
+            } catch (e) {
+              message = errorText || message;
+            }
+            throw new Error(message);
+          }
+        } catch (error: any) {
+          console.error("Admin Error:", error);
+          Alert.alert("System Error", error.message);
+        } finally {
+          setIsCreating(false);
+        }
+      };
 
   return (
     <ScrollView style={styles.container}>

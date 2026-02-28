@@ -12,11 +12,10 @@ import * as FileSystem from 'expo-file-system/legacy'
 const API = process.env.EXPO_PUBLIC_API_GATEWAY_URL
 
 interface MicButtonProps {
-  reportType: 'police' | 'medical'
-  onFieldsExtracted: (fields: Record<string, any>) => void
+  onFieldsExtracted: (fields: Record<string, any>, reportType: string) => void
 }
 
-export default function MicButton({ reportType, onFieldsExtracted }: MicButtonProps) {
+export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY)
   const [status, setStatus] = useState<'idle' | 'recording' | 'transcribing' | 'parsing'>('idle')
 
@@ -60,19 +59,25 @@ export default function MicButton({ reportType, onFieldsExtracted }: MicButtonPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audio: base64Audio })
       })
-      const { transcript } = await transcribeRes.json()
+      const transcribeData = await transcribeRes.json()
+      console.log('Transcribe response:', JSON.stringify(transcribeData))
+      const transcribeBody = JSON.parse(transcribeData.body)
+      const { transcript } = transcribeBody
       setStatus('parsing')
-
-      // 3. Send to Lambda 2 — parse report
+      
+      // 3. Send to Lambda 2 — parse report (no report_type needed, AI detects it)
       const parseRes = await fetch(`${API}/parse-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript, report_type: reportType })
+        body: JSON.stringify({ transcript })
       })
-      const { fields } = await parseRes.json()
+      const rawParse = await parseRes.json()
+      console.log('Raw parse response:', JSON.stringify(rawParse))
+      const parseBody = JSON.parse(rawParse.body)
+      const { fields, report_type } = parseBody
 
-      // 4. Send fields back to form
-      onFieldsExtracted(fields)
+      // 4. Send fields and report type back to form
+      onFieldsExtracted(fields, report_type)
     } catch (err) {
       console.error('Error processing audio:', err)
     } finally {
