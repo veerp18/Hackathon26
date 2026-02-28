@@ -10,42 +10,8 @@ import { Feather } from '@expo/vector-icons';
 
 // AWS Amplify Imports
 import { Amplify } from 'aws-amplify';
-import { signIn } from 'aws-amplify/auth';
-// Note: This file is generated once you run 'npx amplify sandbox'
-import outputs from '../amplify_outputs.json'; 
-
-
-import { getCurrentUser } from 'aws-amplify/auth';
-
-
-
-
-const checkUser = async () => {
-  try {
-    await getCurrentUser();
-    setLoggedIn(true); // If this succeeds, you're already in!
-  } catch (err) {
-    setLoggedIn(false); // No user found, show login screen
-  }
-};
-
-//signing you out apon running the code 
-//this will probably have to be changed later if planning to sign in with different user account
-import { signOut } from 'aws-amplify/auth';
-
-// Run this once to clear the "stuck" session
-const handleSignOut = async () => {
-  try {
-    await signOut();
-    setLoggedIn(false);
-    console.log("Signed out successfully");
-  } catch (error) {
-    console.log("Error signing out: ", error);
-  }
-};
-
-
-
+import { signIn, signOut, getCurrentUser, confirmSignIn } from 'aws-amplify/auth';
+import outputs from '../amplify_outputs.json';
 
 Amplify.configure(outputs);
 
@@ -140,7 +106,7 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
             <Text style={styles.btnSub}>Manage agency personnel</Text>
           </View>
           <Feather name="chevron-right" size={16} color="rgba(255,255,255,0.4)" />
-      </TouchableOpacity>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.btn} onPress={onLogout}>
           <View style={styles.btnIcon}>
@@ -165,37 +131,51 @@ function HomeScreen({ onLogout }: { onLogout: () => void }): JSX.Element {
 /**
  * Main App Component: Handles Login logic and routing.
  */
-
 export default function App(): JSX.Element {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [loggedIn, setLoggedIn] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true to check user
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [fontsLoaded] = useFonts({ Oswald_700Bold });
 
   // Check for existing session on mount
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        await getCurrentUser();
-        setLoggedIn(true);
-      } catch (err) {
-        setLoggedIn(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     checkUser();
   }, []);
+
+  const checkUser = async () => {
+    try {
+      await getCurrentUser();
+      setLoggedIn(true);
+    } catch (err) {
+      setLoggedIn(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle Sign Out
   const handleLogout = async () => {
     try {
       await signOut();
       setLoggedIn(false);
-      console.log("Signed out successfully");
     } catch (error) {
       console.log("Error signing out: ", error);
+    }
+  };
+
+  // Handle Password Confirmation for Admin-created users
+  const handleConfirmPassword = async (newPassword: string) => {
+    try {
+      const { isSignedIn } = await confirmSignIn({
+        challengeResponse: newPassword
+      });
+      if (isSignedIn) {
+        setLoggedIn(true);
+        Alert.alert("Success", "Password updated. Welcome to the system.");
+      }
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
     }
   };
 
@@ -208,17 +188,28 @@ export default function App(): JSX.Element {
 
     setIsLoading(true);
     try {
-      const { isSignedIn } = await signIn({ 
+      const { isSignedIn, nextStep } = await signIn({ 
         username: email.trim(), 
         password: password 
       });
 
       if (isSignedIn) {
         setLoggedIn(true);
+      } else if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        Alert.prompt(
+          "First Time Login",
+          "An admin created this account. Please enter a new permanent password:",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Set Password", 
+              onPress: (newPassword) => handleConfirmPassword(newPassword) 
+            }
+          ]
+        );
       }
     } catch (error: any) {
-      console.error(error);
-      Alert.alert("Authentication Failed", "Invalid credentials.");
+      Alert.alert("Login Failed", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -236,17 +227,12 @@ export default function App(): JSX.Element {
     return <HomeScreen onLogout={handleLogout} />;
   }
 
-  // ... rest of your return (the KeyboardAvoidingView part) ...
-
-
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="light" />
-
       <View style={styles.header}>
         <Text style={[styles.title, fontsLoaded && { fontFamily: 'Oswald_700Bold' }]}>
           911 Notepad

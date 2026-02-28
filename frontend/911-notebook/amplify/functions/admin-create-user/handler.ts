@@ -15,7 +15,7 @@ export const handler = async (event: any) => {
       { Name: "email", Value: email },
       { Name: "email_verified", Value: "true" },
     ],
-    TemporaryPassword: "TempPassword123!", // You can randomize this later
+    TemporaryPassword: "Balls123!", // You can randomize this later
   });
 
   try {
