@@ -41,49 +41,67 @@ export default function MicButton({ onFieldsExtracted }: MicButtonProps) {
   }
 
   const stopRecording = async () => {
-    try {
-      await audioRecorder.stop()
-      const uri = audioRecorder.uri
-      setStatus('transcribing')
+  try {
+    await audioRecorder.stop()
+    const uri = audioRecorder.uri
+    setStatus('transcribing')
 
-      if (!uri) throw new Error('No audio URI')
+    if (!uri) throw new Error('No audio URI')
 
-      // 1. Convert audio to base64
-      const base64Audio = await FileSystem.readAsStringAsync(uri, {
-        encoding: 'base64'
-      })
+    const base64Audio = await FileSystem.readAsStringAsync(uri, {
+      encoding: 'base64'
+    })
 
-      // 2. Send to Lambda 1 — transcribe
-      const transcribeRes = await fetch(`${API}/transcribe`, {
+    // 1. Start transcription job
+    const startRes = await fetch(`${API}/transcribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio: base64Audio })
+    })
+    const startData = await startRes.json()
+    const startBody = JSON.parse(startData.body)
+    const jobName = startBody.job_name
+
+    // 2. Poll until complete
+    let transcript = ''
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      const pollRes = await fetch(`${API}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: base64Audio })
+        body: JSON.stringify({ job_name: jobName })
       })
-      const transcribeData = await transcribeRes.json()
-      console.log('Transcribe response:', JSON.stringify(transcribeData))
-      const transcribeBody = JSON.parse(transcribeData.body)
-      const { transcript } = transcribeBody
-      setStatus('parsing')
-      
-      // 3. Send to Lambda 2 — parse report (no report_type needed, AI detects it)
-      const parseRes = await fetch(`${API}/parse-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript })
-      })
-      const rawParse = await parseRes.json()
-      console.log('Raw parse response:', JSON.stringify(rawParse))
-      const parseBody = JSON.parse(rawParse.body)
-      const { fields, report_type } = parseBody
+      const pollData = await pollRes.json()
+      const pollBody = JSON.parse(pollData.body)
 
-      // 4. Send fields and report type back to form
-      onFieldsExtracted(fields, report_type)
-    } catch (err) {
-      console.error('Error processing audio:', err)
-    } finally {
-      setStatus('idle')
+      if (pollBody.status === 'COMPLETED') {
+        transcript = pollBody.transcript
+        break
+      } else if (pollBody.status === 'FAILED') {
+        throw new Error('Transcription failed')
+      }
+      // Still IN_PROGRESS, keep polling
     }
+
+    setStatus('parsing')
+
+    // 3. Parse report
+    const parseRes = await fetch(`${API}/parse-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript })
+    })
+    const rawParse = await parseRes.json()
+    const parseBody = JSON.parse(rawParse.body)
+    const { fields, report_type } = parseBody
+
+    onFieldsExtracted(fields, report_type)
+  } catch (err) {
+    console.error('Error processing audio:', err)
+  } finally {
+    setStatus('idle')
   }
+}
 
   const getStatusText = () => {
     switch (status) {

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Text, ScrollView, TouchableOpacity, TextInput, Modal } from 'react-native';
+import { View, StyleSheet, Text, ScrollView, TouchableOpacity, TextInput, Modal, Linking } from 'react-native';
 import MicButton from '../components/MicButton'
 import { useState } from 'react'
 
@@ -41,7 +41,6 @@ export default function ReportScreen() {
   const handleFieldSave = async () => {
     if (!selectedField || !inputValue.trim()) return
 
-    // Set nested field value using dot notation
     const keys = selectedField.field.replace(/\[0\]/g, '.0').split('.')
     const updatedData = { ...formData }
     let obj: any = updatedData
@@ -55,10 +54,32 @@ export default function ReportScreen() {
     setSelectedField(null)
     setInputValue('')
 
-    // Re-validate
     await runValidation(updatedData, reportType)
   }
 
+  const handleExportPDF = async () => {
+    try {
+      const reportId = `report-${Date.now()}`
+      const exportRes = await fetch(`${API}/export-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          report: formData,
+          report_type: reportType,
+          report_id: reportId
+        })
+      })
+      const exportRaw = await exportRes.text()
+      console.log('Raw export response:', exportRaw)
+      const exportData = JSON.parse(exportRaw)
+      const exportBody = JSON.parse(exportData.body)
+      console.log('PDF URL:', exportBody.pdf_url)
+      await Linking.openURL(exportBody.pdf_url)
+    } catch (err) {
+      console.error('PDF export error:', err)
+    }
+  }
+  console.log('is_complete:', validation?.is_complete)
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
@@ -117,10 +138,15 @@ export default function ReportScreen() {
             </View>
           )}
 
+          {validation.is_complete && (
+            <TouchableOpacity style={styles.exportBtn} onPress={handleExportPDF}>
+              <Text style={styles.exportText}>📄 Export PDF</Text>
+            </TouchableOpacity>
+          )}
+
         </View>
       )}
 
-      {/* Fill Field Modal */}
       <Modal
         visible={!!selectedField}
         transparent
@@ -282,6 +308,19 @@ const styles = StyleSheet.create({
     color: '#ff3b3b',
     fontSize: 12,
     fontWeight: '600',
+  },
+  exportBtn: {
+    marginTop: 8,
+    backgroundColor: '#3bff8a',
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  exportText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
