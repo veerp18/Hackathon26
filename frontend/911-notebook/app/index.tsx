@@ -91,11 +91,10 @@ function HomeScreen({ onLogout, isAdmin }: { onLogout: () => void, isAdmin: bool
 
         <TouchableOpacity style={styles.btn} onPress={onLogout}>
           <View style={styles.btnIcon}><Feather name="log-out" size={18} color="#fff" /></View>
-          <div style={styles.btnText}>
+          <View style={styles.btnText}>
             <Text style={styles.btnTitle}>Sign Out</Text>
-            {}
-            <Text style={styles.btnSub}>{"\nEnd current shift session"}</Text>
-          </div>
+            <Text style={styles.btnSub}>End current shift session</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -196,6 +195,7 @@ export default function App(): JSX.Element {
         <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#888" value={email} onChangeText={setEmail} autoCapitalize="none" />
         <TextInput style={styles.input} placeholder="Passcode" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry />
         <TouchableOpacity style={styles.button} onPress={handleLogin}><Text style={styles.buttonText}>Log In</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.devButton} onPress={() => setLoggedIn(true)}><Text style={styles.devButtonText}>Dev Bypass</Text></TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -210,6 +210,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#14161a', color: '#e8e9ec', borderRadius: 8, padding: 14, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
   button: { backgroundColor: '#c0392b', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 8 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  devButton: { borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 8 },
+  devButtonText: { color: '#0e0f11', fontSize: 13 },
   homeContainer: { flex: 1, backgroundColor: '#0e0f11', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 32 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: 'rgba(192,57,43,0.12)', borderWidth: 1, borderColor: 'rgba(192,57,43,0.2)', borderRadius: 4, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 18 },
   pulseDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#e74c3c' },
