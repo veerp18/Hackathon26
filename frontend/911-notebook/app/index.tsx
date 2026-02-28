@@ -1,32 +1,29 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useFonts, Oswald_700Bold } from '@expo-google-fonts/oswald';
 
 function HomeScreen(): JSX.Element {
+  const router = useRouter();
   return (
-    <View style={styles.container}>
+    <View style={styles.homeContainer}>
       <StatusBar style="light" />
-      <Text style={styles.homeTitle}>911 Notepad</Text>
       <Text style={styles.homeGreeting}>Welcome, Responder</Text>
 
-      <View style={styles.cardContainer}>
-        <TouchableOpacity style={styles.card}>
-          <Text style={styles.cardIcon}>🎙️</Text>
-          <Text style={styles.cardTitle}>New Report</Text>
-          <Text style={styles.cardSub}>Start a voice incident report</Text>
-        </TouchableOpacity>
+      <View style={styles.cardGrid}>
+        <View style={styles.cardRow}>
+          <TouchableOpacity style={styles.card} onPress={() => router.push('/report')}>
+            <Text style={styles.cardTitle}>Report</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.card}>
-          <Text style={styles.cardIcon}>📋</Text>
-          <Text style={styles.cardTitle}>Past Reports</Text>
-          <Text style={styles.cardSub}>View your filed reports</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.card}>
+            <Text style={styles.cardTitle}>Past Reports</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity style={[styles.card, styles.cardSmall]}>
-          <Text style={styles.cardIcon}>👤</Text>
+        <TouchableOpacity style={[styles.card, styles.cardWide]}>
           <Text style={styles.cardTitle}>Account</Text>
-          <Text style={styles.cardSub}>Your profile & settings</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -134,46 +131,56 @@ const styles = StyleSheet.create({
   },
 
   // Home screen
-  homeTitle: {
-    fontSize: 28,
+  homeContainer: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+    paddingTop: 80,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  homeGreeting: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     letterSpacing: 1,
-    marginBottom: 4,
+    marginBottom: 40,
+    textAlign: 'center',
   },
-  homeGreeting: {
-    fontSize: 14,
-    color: '#aaa',
-    marginBottom: 48,
-  },
-  cardContainer: {
+  cardGrid: {
     width: '100%',
     alignItems: 'center',
     gap: 16,
   },
+  cardRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   card: {
-    backgroundColor: '#2a2a3e',
-    borderRadius: 12,
-    padding: 24,
-    width: '80%',
-    borderWidth: 1,
-    borderColor: '#3a3a5e',
+    width: 190,
+    height: 190,
+    backgroundColor: '#12122a',
+    borderRadius: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#e63946',
+    borderTopWidth: 1,
+    borderTopColor: '#3a3a5e',
+    borderRightWidth: 1,
+    borderRightColor: '#3a3a5e',
+    borderBottomWidth: 1,
+    borderBottomColor: '#3a3a5e',
+    justifyContent: 'flex-end',
+    padding: 16,
   },
-  cardSmall: {
-    paddingVertical: 18,
-  },
-  cardIcon: {
-    fontSize: 32,
-    marginBottom: 10,
+  cardWide: {
+    aspectRatio: undefined,
+    paddingVertical: 28,
+    width: '100%',
+    flex: 0,
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
-  },
-  cardSub: {
-    fontSize: 13,
-    color: '#aaa',
+    letterSpacing: 0.5,
   },
 });
