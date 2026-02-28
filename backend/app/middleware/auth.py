@@ -3,8 +3,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 import requests
 from functools import lru_cache
+from typing import TYPE_CHECKING
 from app.config import get_settings
 from app.schemas import CognitoUser
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 settings = get_settings()
 security = HTTPBearer()
@@ -68,8 +72,27 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> CognitoUser:
     """Dependency to get current authenticated user"""
+    # Import here to avoid circular dependency
+    from app.database import AsyncSessionLocal
+    from app.services.user_service import UserService
+    
     token = credentials.credentials
-    return verify_token(token)
+    cognito_user = verify_token(token)
+    
+    # Fetch user from database to get role and org_id
+    async with AsyncSessionLocal() as db:
+        db_user = await UserService.get_by_cognito_sub(db, cognito_user.sub)
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Update cognito_user with database info
+        cognito_user.role = db_user.role
+        cognito_user.org_id = str(db_user.org_id)
+    
+    return cognito_user
 
 
 def require_role(*allowed_roles: str):

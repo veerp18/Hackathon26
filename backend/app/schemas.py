@@ -108,8 +108,8 @@ class Report(ReportBase):
 class CognitoUser(BaseModel):
     sub: str
     email: str
-    org_id: str = Field(alias="custom:org_id")
-    role: UserRole = Field(alias="custom:role")
+    org_id: Optional[str] = Field(default=None, alias="custom:org_id")
+    role: Optional[UserRole] = Field(default=None, alias="custom:role")
     groups: Optional[list[str]] = Field(default=None, alias="cognito:groups")
     
     class Config:
