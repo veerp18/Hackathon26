@@ -1,7 +1,11 @@
 import boto3
 import json
+import uuid
+from datetime import datetime, timezone
 
 bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+table = dynamodb.Table("Reports")
 
 POLICE_SCHEMA = {
     "ori_number": "",
@@ -211,10 +215,11 @@ MEDICAL_SCHEMA = {
 
 def lambda_handler(event, context):
 
-    # 1. Get transcript and report type from request
+    # 1. Get transcript, report type, and user_id from request
     body = json.loads(event["body"])
     transcript = body["transcript"]
     report_type = body["report_type"]  # "police" or "medical"
+    user_id = body.get("user_id", "unknown")
 
     # 2. Pick the right schema
     schema = POLICE_SCHEMA if report_type == "police" else MEDICAL_SCHEMA
@@ -253,11 +258,29 @@ Transcript:
             extracted = extracted[4:]
     extracted = extracted.strip()
 
+    parsed_fields = json.loads(extracted)
+
+    # 7. Save to DynamoDB
+    report_id = str(uuid.uuid4())
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    table.put_item(Item={
+        "user_id": user_id,
+        "timestamp": timestamp,
+        "report_id": report_id,
+        "report_type": report_type,
+        "fields": json.dumps(parsed_fields)  # store as JSON string to avoid DynamoDB type issues
+    })
+
     return {
         "statusCode": 200,
         "headers": {
             "Access-Control-Allow-Origin": "*",
             "Content-Type": "application/json"
         },
-        "body": json.dumps({"fields": json.loads(extracted)})
+        "body": json.dumps({
+            "fields": parsed_fields,
+            "report_id": report_id,
+            "timestamp": timestamp
+        })
     }
